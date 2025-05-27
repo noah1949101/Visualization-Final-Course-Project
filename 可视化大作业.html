@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="可视化大作业" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        .tooltip {
+            position: absolute;
+            padding: 12px;
+            background: rgba(255,255,255,0.95);
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            pointer-events: none;
+            font-family: 黑体;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            min-width: 160px;
+        }
+        .axis-label {
+            font-size: 12px;
+            fill: #333;
+        }
+        .bar:hover {
+            opacity: 0.8;
+            cursor: pointer;
+        }
+        select {
+            margin: 20px;
+            padding: 5px;
+            font-size: 16px;
+        }
+        #pie-container {
+            position: fixed;
+            top: 120px;
+            right: 50px;
+            background: rgba(255,255,255,0.95);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            cursor: pointer;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+        }
+        .total-label {
+            font-size: 16px;
+            fill: #2c3e50;
+            font-weight: bold;
+            text-anchor: middle;
+        }
+        .x-axis text {
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .province-title {
+            font-size: 18px;
+            font-weight: bold;
+            text-anchor: middle;
+        }
+    </style>
+    <script>
+        function mySvg() {
+    const colorScheme = ["#440154", "#3b528b", "#21918c", "#5ec962"];
+    const industries = ["农业", "林业", "牧业", "渔业"];
+    const margin = { top: 80, right: 30, bottom: 120, left: 60 };
+    const width = 1200, height = 600;
+
+    const svg = d3.select("#chart")
+        .append("svg")
+        .attr("width", width)
+        .attr("height", height);
+
+    const tooltip = d3.select("body").append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0);
+    
+    const pieTooltip = d3.select("body").append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0);
+
+    const provinces = [
+        {
+            fullName: "北京市",
+            name: "京",
+            quarters: {
+                Q1: { agriculture: 15.2, forestry: 11.8, animal: 10.3, fishery: 0.4 },
+                Q2: { agriculture: 97.4, forestry: 46.2, animal: 19.3, fishery: 2.4 },
+                Q3: { agriculture: 90.5, forestry: 43.4, animal: 28.3, fishery: 3.3 },
+                Q4: { agriculture: 15.2, forestry: 11.1, animal: 10.6, fishery: 0.6 }
+            }
+        },
+        {
+            fullName: "天津市",
+            name: "津",
+            quarters: {
+                Q1: { agriculture: 18.4, forestry: 1.1, animal: 34.8, fishery: 6.5 },
+                Q2: { agriculture: 88.3, forestry: 3.0, animal: 64.6, fishery: 17.6 },
+                Q3: { agriculture: 193.1, forestry: 4.8, animal: 100.3, fishery: 46.8 },
+                Q4: { agriculture: 17.8, forestry: 1.2, animal: 34.1, fishery: 6.9 }
+            }
+        },
+        {
+            fullName: "河北省",
+            name: "冀",
+            quarters: {
+                Q1: { agriculture: 312.7, forestry: 29.7, animal: 577.9, fishery: 19.3 },
+                Q2: { agriculture: 1310.3, forestry: 109.8, animal: 1137.0, fishery: 59.2 },
+                Q3: { agriculture: 2185.2, forestry: 161.5, animal: 1813.7, fishery: 157.5 },
+                Q4: { agriculture: 297.2, forestry: 30.7, animal: 542.2, fishery: 19.9 }
+            }
+        },{
+            fullName: "山西省",
+            name: "晋",
+            quarters: {
+                Q1: { agriculture: 63.0, forestry: 57.4, animal: 169.3, fishery: 1.8 },
+                Q2: { agriculture: 249.3, forestry: 138.3, animal: 327.8, fishery: 4.7 },
+                Q3: { agriculture: 801.0, forestry: 153.8, animal: 500.9, fishery: 8.9 },
+                Q4: { agriculture: 63.5, forestry: 60.5, animal: 166.3, fishery: 2.0 }
+            }
+        },{
+            fullName: "内蒙古自治区",
+            name: "蒙",
+            quarters: {
+                Q1: { agriculture: 31.4, forestry: 29.9, animal: 240.2, fishery: 2.3 },
+                Q2: { agriculture: 72.1, forestry: 57.0, animal: 561.4, fishery: 11.6 },
+                Q3: { agriculture: 298.2, forestry: 100.1, animal: 1090.1, fishery: 27.2 },
+                Q4: { agriculture: 31.7, forestry: 30.3, animal: 245.3, fishery: 2.4 }
+            }
+        },{
+            fullName: "辽宁省",
+            name: "辽",
+            quarters: {
+                Q1: { agriculture: 162.9, forestry: 16.2, animal: 420.9, fishery: 81.6 },
+                Q2: { agriculture: 623.0, forestry: 51.2, animal: 873.6, fishery: 395.4 },
+                Q3: { agriculture: 1030.0, forestry: 71.4, animal: 1237.2, fishery: 709.4 },
+                Q4: { agriculture: 135.2, forestry: 16.4, animal: 404.1, fishery: 79.6 }
+            }
+        },{
+            fullName: "吉林省",
+            name: "吉",
+            quarters: {
+                Q1: { agriculture: 8.6, forestry: 9.4, animal: 296.9, fishery: 2.8 },
+                Q2: { agriculture: 53.8, forestry: 29.1, animal: 590.7, fishery: 14.0 },
+                Q3: { agriculture: 343.4, forestry: 47.9, animal: 913.7, fishery: 38.3 },
+                Q4: { agriculture: 9.1, forestry: 9.4, animal: 302.4, fishery: 3.0 }
+            }
+        },{
+            fullName: "黑龙江省",
+            name: "黑",
+            quarters: {
+                Q1: { agriculture: 15.6, forestry: 9.3, animal: 311.4, fishery: 4.9 },
+                Q2: { agriculture: 173.4, forestry: 58.2, animal: 611.6, fishery: 41.8 },
+                Q3: { agriculture: 814.1, forestry: 131.9, animal: 1003.4, fishery: 131.7 },
+                Q4: { agriculture: 16.7, forestry: 8.7, animal: 318.8, fishery: 5.4 }
+            }
+        },{
+            fullName: "上海市",
+            name: "沪",
+            quarters: {
+                Q1: { agriculture: 19.2, forestry: 0.5, animal: 12.9, fishery: 13.1 },
+                Q2: { agriculture: 53.0, forestry: 1.2, animal: 24.0, fishery: 20.4 },
+                Q3: { agriculture: 88.4, forestry: 1.5, animal: 35.6, fishery: 31.7 },
+                Q4: { agriculture: 17.3, forestry: 0.4, animal: 12.2, fishery: 16.6 }
+            }
+        },{
+            fullName: "江苏省",
+            name: "苏",
+            quarters: {
+                Q1: { agriculture: 587.2, forestry: 44.3, animal: 239.9, fishery: 219.4 },
+                Q2: { agriculture: 1891.3, forestry: 77.7, animal: 453.2, fishery: 589.3 },
+                Q3: { agriculture: 2838.6, forestry: 113.1, animal: 848.0, fishery: 1186.1 },
+                Q4: { agriculture: 589.1, forestry: 42.2, animal: 273.9, fishery: 233.1 }
+            }
+        },{
+            fullName: "浙江省",
+            name: "浙",
+            quarters: {
+                Q1: { agriculture: 237.6, forestry: 28.4, animal: 95.4, fishery: 256.4 },
+                Q2: { agriculture: 827.1, forestry: 122.8, animal: 184.9, fishery: 511.1 },
+                Q3: { agriculture: 1309.6, forestry: 155.1, animal: 282.7, fishery: 809.1 },
+                Q4: { agriculture: 77.8, forestry: 30.3, animal: 105.5, fishery: 344.4 }
+            }
+        },{
+            fullName: "安徽省",
+            name: "皖",
+            quarters: {
+                Q1: { agriculture: 239.6, forestry: 55.6, animal: 386.3, fishery: 147.6 },
+                Q2: { agriculture: 1081.6, forestry: 134.6, animal: 681.4, fishery: 257.4 },
+                Q3: { agriculture: 1682.7, forestry: 213.2, animal: 1262.0, fishery: 454.1 },
+                Q4: { agriculture: 240.7, forestry: 57.5, animal: 395.5, fishery: 144.3 }
+            }
+        },{
+            fullName: "福建省",
+            name: "闽",
+            quarters: {
+                Q1: { agriculture: 194.4, forestry: 68.8, animal: 239.9, fishery: 397.4 },
+                Q2: { agriculture: 585.9, forestry: 155.1, animal: 472.8, fishery: 889.5 },
+                Q3: { agriculture: 1248.6, forestry: 238.4, animal: 756.7, fishery: 1228.2 },
+                Q4: { agriculture: 206.1, forestry: 70.8, animal: 245.8, fishery: 411.5 }
+            }
+        },{
+            fullName: "江西省",
+            name: "赣",
+            quarters: {
+                Q1: { agriculture: 193.8, forestry: 65.9, animal: 227.7, fishery: 150.3 },
+                Q2: { agriculture: 454.6, forestry: 147.2, animal: 433.8, fishery: 235.7 },
+                Q3: { agriculture: 1024.2, forestry: 231.1, animal: 758.7, fishery: 406.9 },
+                Q4: { agriculture: 199.7, forestry: 63.8, animal: 237.7, fishery: 157.6 }
+            }
+        },{
+            fullName: "山东省",
+            name: "鲁",
+            quarters: {
+                Q1: { agriculture: 582.3, forestry: 34.0, animal: 576.0, fishery: 111.5 },
+                Q2: { agriculture: 3293.0, forestry: 70.8, animal: 1082.8, fishery: 499.9 },
+                Q3: { agriculture: 5186.0, forestry: 126.9, animal: 1992.6, fishery: 924.8 },
+                Q4: { agriculture: 535.2, forestry: 35.0, animal: 582.0, fishery: 109.6 }
+            }
+        },{
+            fullName: "河南省",
+            name: "豫",
+            quarters: {
+                Q1: { agriculture: 362.4, forestry: 46.6, animal: 718.1, fishery: 35.7 },
+                Q2: { agriculture: 2698.4, forestry: 81.8, animal: 1192.2, fishery: 67.3 },
+                Q3: { agriculture: 5754.8, forestry: 139.5, animal: 1794.2, fishery: 99.7 },
+                Q4: { agriculture: 363.0, forestry: 53.5, animal: 712.5, fishery: 39.6 }
+            }
+        },{
+            fullName: "湖北省",
+            name: "鄂",
+            quarters: {
+                Q1: { agriculture: 363.3, forestry: 39.5, animal: 424.1, fishery: 424.8 },
+                Q2: { agriculture: 1349.8, forestry: 127.9, animal: 814.4, fishery: 725.5 },
+                Q3: { agriculture: 3562.2, forestry: 180.9, animal: 1315.6, fishery: 1147.5 },
+                Q4: { agriculture: 355.8, forestry: 45.2, animal: 441.8, fishery: 434.0 }
+            }
+        },{
+            fullName: "湖南省",
+            name: "湘",
+            quarters: {
+                Q1: { agriculture: 541.7, forestry: 10.5, animal: 558.3, fishery: 138.4 },
+                Q2: { agriculture: 1646.1, forestry: 154.2, animal: 924.1, fishery: 327.4 },
+                Q3: { agriculture: 2967.0, forestry: 202.3, animal: 1505.0, fishery: 504.1 },
+                Q4: { agriculture: 563.5, forestry: 10.3, animal: 596.5, fishery: 145.3 }
+            }
+        },{
+            fullName: "广东省",
+            name: "粤",
+            quarters: {
+                Q1: { agriculture: 701.9, forestry: 91.6, animal: 448.3, fishery: 468.8 },
+                Q2: { agriculture: 1797.1, forestry: 246.8, animal: 898.8, fishery: 893.6 },
+                Q3: { agriculture: 3208.0, forestry: 424.2, animal: 1298.6, fishery: 1439.7 },
+                Q4: { agriculture: 748.2, forestry: 92.5, animal: 457.4, fishery: 485.7 }
+            }
+        },{
+            fullName: "广西壮族自治区",
+            name: "桂",
+            quarters: {
+                Q1: { agriculture: 278.9, forestry: 55.6, animal: 309.5, fishery: 122.4 },
+                Q2: { agriculture: 811.2, forestry: 210.8, animal: 728.6, fishery: 264.8 },
+                Q3: { agriculture: 2096.1, forestry: 352.9, animal: 1155.5, fishery: 417.1 },
+                Q4: { agriculture: 280.2, forestry: 59.6, animal: 328.6, fishery: 120.5 }
+            }
+        },{
+            fullName: "海南省",
+            name: "琼",
+            quarters: {
+                Q1: { agriculture: 309.7, forestry: 4.1, animal: 89.2, fishery: 159.1 },
+                Q2: { agriculture: 700.4, forestry: 43.1, animal: 148.6, fishery: 309.1 },
+                Q3: { agriculture: 1021.4, forestry: 89.0, animal: 223.4, fishery: 421.0 },
+                Q4: { agriculture: 307.2, forestry: 15.3, animal: 94.2, fishery: 174.3 }
+            }
+        },{
+            fullName: "重庆市",
+            name: "渝",
+            quarters: {
+                Q1: { agriculture: 242.3, forestry: 28.7, animal: 179.9, fishery: 30.7 },
+                Q2: { agriculture: 597.3, forestry: 82.6, animal: 293.4, fishery: 68.1 },
+                Q3: { agriculture: 1482.6, forestry: 135.9, animal: 475.9, fishery: 111.6 },
+                Q4: { agriculture: 252.8, forestry: 31.7, animal: 187.4, fishery: 32.4 }
+            }
+        },{
+            fullName: "四川省",
+            name: "川",
+            quarters: {
+                Q1: { agriculture: 641.4, forestry: 91.7, animal: 682.1, fishery: 94.9 },
+                Q2: { agriculture: 1852.6, forestry: 258.6, animal: 1419.6, fishery: 214.6 },
+                Q3: { agriculture: 5308.1, forestry: 351.2, animal: 2045.7, fishery: 286.8 },
+                Q4: { agriculture: 676.1, forestry: 96.1, animal: 701.2, fishery: 97.0 }
+            }
+        },{
+            fullName: "贵州省",
+            name: "贵",
+            quarters: {
+                Q1: { agriculture: 360.7, forestry: 88.6, animal: 275.8, fishery: 21.7 },
+                Q2: { agriculture: 1224.2, forestry: 161.8, animal: 448.3, fishery: 41.3 },
+                Q3: { agriculture: 2584.9, forestry: 239.9, animal: 659.5, fishery: 69.9 },
+                Q4: { agriculture: 367.6, forestry: 99.8, animal: 294.5, fishery: 24.2 }
+            }
+        },{
+            fullName: "云南省",
+            name: "云",
+            quarters: {
+                Q1: { agriculture: 558.3, forestry: 69.2, animal: 375.3, fishery: 20.8 },
+                Q2: { agriculture: 1172.4, forestry: 268.3, animal: 662.8, fishery: 38.2 },
+                Q3: { agriculture: 2202.9, forestry: 416.4, animal: 1193.6, fishery: 82.6 },
+                Q4: { agriculture: 632.9, forestry: 83.5, animal: 390.8, fishery: 21.1 }
+            }
+        },{
+            fullName: "西藏自治区",
+            name: "藏",
+            quarters: {
+                Q1: { agriculture: 4.7, forestry: 0.4, animal: 17.8, fishery: 0.0 },
+                Q2: { agriculture: 31.4, forestry: 5.0, animal: 45.3, fishery: 0.0 },
+                Q3: { agriculture: 85.0, forestry: 6.8, animal: 87.5, fishery: 0.1 },
+                Q4: { agriculture: 4.4, forestry: 0.4, animal: 20.2, fishery: 0.0 }
+            }
+        },{
+            fullName: "陕西省",
+            name: "陕",
+            quarters: {
+                Q1: { agriculture: 194.9, forestry: 17.5, animal: 224.9, fishery: 7.3 },
+                Q2: { agriculture: 865.8, forestry: 43.3, animal: 376.1, fishery: 15.9 },
+                Q3: { agriculture: 1534.6, forestry: 69.1, animal: 528.4, fishery: 24.3 },
+                Q4: { agriculture: 186.9, forestry: 19.5, animal: 227.2, fishery: 8.1 }
+            }
+        },{
+            fullName: "甘肃省",
+            name: "甘",
+            quarters: {
+                Q1: { agriculture: 165.0, forestry: 1.3, animal: 164.4, fishery: 0.2 },
+                Q2: { agriculture: 351.2, forestry: 4.0, animal: 304.6, fishery: 1.0 },
+                Q3: { agriculture: 1594.2, forestry: 5.3, animal: 478.3, fishery: 1.3 },
+                Q4: { agriculture: 152.3, forestry: 1.4, animal: 175.0, fishery: 0.3 }
+            }
+        },{
+            fullName: "青海省",
+            name: "青",
+            quarters: {
+                Q1: { agriculture: 3.2, forestry: 0.0, animal: 37.9, fishery: 0.2 },
+                Q2: { agriculture: 14.0, forestry: 3.0, animal: 69.4, fishery: 1.0 },
+                Q3: { agriculture: 154.8, forestry: 5.0, animal: 136.6, fishery: 2.1 },
+                Q4: { agriculture: 3.0, forestry: 0.0, animal: 38.5, fishery: 0.3 }
+            }
+        },{
+            fullName: "宁夏回族自治区",
+            name: "宁",
+            quarters: {
+                Q1: { agriculture: 20.4, forestry: 0.4, animal: 98.7, fishery: 2.5 },
+                Q2: { agriculture: 47.0, forestry: 4.3, animal: 181.2, fishery: 7.3 },
+                Q3: { agriculture: 296.5, forestry: 8.1, animal: 263.7, fishery: 20.2 },
+                Q4: { agriculture: 19.9, forestry: 1.6, animal: 93.8, fishery: 2.7 }
+            }
+        },{
+            fullName: "新疆维吾尔自治区",
+            name: "新",
+            quarters: {
+                Q1: { agriculture: 25.2, forestry: 9.9, animal: 245.2, fishery: 5.4 },
+                Q2: { agriculture: 533.4, forestry: 36.0, animal: 545.4, fishery: 12.0 },
+                Q3: { agriculture: 2439.5, forestry: 53.2, animal: 817.2, fishery: 18.3 },
+                Q4: { agriculture: 23.6, forestry: 13.2, animal: 247.1, fishery: 5.9 }
+            }
+        }
+    ];
+
+    document.addEventListener('click', (event) => {
+        const pieContainer = document.getElementById('pie-container');
+        const isClickInside = pieContainer.contains(event.target);
+        const isChartClick = event.target.closest('.bar') || event.target.closest('select');
+        
+        if (!isClickInside && !isChartClick && pieContainer.style.display === 'block') {
+            pieContainer.style.display = 'none';
+        }
+    });
+
+    function updateChart(quarter) {
+        svg.selectAll("*").remove();
+        
+        const nationalTotal = provinces.reduce((sum, d) => 
+            sum + getTotal(d, quarter), 0);
+
+        svg.append("text")
+            .attr("class", "total-label")
+            .attr("x", width/2)
+            .attr("y", 30)
+            .text(`全国总产值：${nationalTotal.toLocaleString()} 亿元`);
+
+        const xScale = d3.scaleBand()
+            .domain(provinces.map(d => d.name))
+            .range([margin.left, width - margin.right])
+            .padding(0.15);
+
+        const maxValue = d3.max(provinces, d => 
+            Object.values(d.quarters[quarter]).reduce((a,b) => a + b, 0)
+        );
+
+        const yScale = d3.scaleLinear()
+            .domain([0, maxValue])
+            .nice()
+            .range([height - margin.bottom, margin.top]);
+
+        svg.append("g")
+            .attr("class", "x-axis")
+            .attr("transform", `translate(0,${height - margin.bottom})`)
+            .call(d3.axisBottom(xScale).tickSizeOuter(0))
+            .selectAll("text")
+            .style("text-anchor", "middle")
+            .style("font-size", "14px")
+            .style("font-weight", "bold");
+
+        svg.append("g")
+            .attr("transform", `translate(${margin.left},0)`)
+            .call(d3.axisLeft(yScale).ticks(6))
+            .append("text")
+            .attr("class", "axis-label")
+            .attr("transform", "rotate(-90)")
+            .attr("y", -40)
+            .attr("x", -height/2)
+            .attr("dy", "1em")
+            .style("text-anchor", "middle")
+            .text("总产值（亿元）");
+
+        svg.selectAll(".bar")
+            .data(provinces)
+            .join("rect")
+                .attr("class", "bar")
+                .attr("x", d => xScale(d.name))
+                .attr("width", xScale.bandwidth())
+                .attr("y", d => yScale(getTotal(d, quarter)))
+                .attr("height", d => height - margin.bottom - yScale(getTotal(d, quarter)))
+                .attr("fill", colorScheme[0])
+                .on("mouseover", function(event, d) {
+                    d3.select(this).attr("fill", colorScheme[3]);
+                    showTooltip(event, d, quarter);
+                })
+                .on("mouseout", function(d) {
+                    d3.select(this).attr("fill", colorScheme[0]);
+                    hideTooltip();
+                })
+                .on("click", function(event, d) {
+                    drawPieChart(d, quarter);
+                    event.stopPropagation();
+                })
+                .transition()
+                .duration(800)
+                .attr("y", d => yScale(getTotal(d, quarter)))
+                .attr("height", d => height - margin.bottom - yScale(getTotal(d, quarter)));
+    }
+
+    function drawPieChart(province, quarter) {
+        const total = getTotal(province, quarter);
+        const pieData = industries.map((industry, i) => ({
+            label: industry,
+            value: province.quarters[quarter][['agriculture','forestry','animal','fishery'][i]]
+        })).filter(d => d.value > 0);
+
+        const container = d3.select("#pie-container")
+            .style("display", "block")
+            .html("");
+
+        const size = 280;
+        const radius = size / 2;
+
+        container.append("div")
+            .style("text-align", "center")
+            .style("font-size", "18px")
+            .style("font-weight", "bold")
+            .style("margin-bottom", "10px")
+            .text(province.fullName);
+
+        const pieSvg = container.append("svg")
+            .attr("width", size)
+            .attr("height", size)
+            .append("g")
+            .attr("transform", `translate(${radius},${radius})`);
+
+        const pie = d3.pie().value(d => d.value).sort(null);
+        const arc = d3.arc().innerRadius(0).outerRadius(radius - 15);
+
+        pieSvg.selectAll("path")
+            .data(pie(pieData))
+            .enter().append("path")
+            .attr("d", arc)
+            .attr("fill", (d,i) => colorScheme[i])
+            .on("mouseover", function(event, d) {
+                const percentage = ((d.data.value / total) * 100).toFixed(1);
+                pieTooltip.transition().duration(200).style("opacity", 0.95);
+                pieTooltip.html(`
+                        <strong>${d.data.label}</strong>
+                        <div style="margin-top:6px; color:#666">
+                            <div>产值：${d.data.value.toLocaleString()}亿元</div>
+                            <div>占比：${percentage}%</div>
+                        </div>
+                    `)
+                    .style("left", `${event.pageX + 15}px`)
+                    .style("top", `${event.pageY - 28}px`);
+                d3.select(this).attr("opacity", 0.8);
+            })
+            .on("mouseout", function() {
+                pieTooltip.transition().duration(200).style("opacity", 0);
+                d3.select(this).attr("opacity", 1);
+            })
+            .on("click", event => event.stopPropagation());
+
+        const legend = container.append("div")
+            .attr("class", "legend")
+            .style("margin-top", "15px");
+
+        legend.selectAll(".legend-item")
+            .data(industries)
+            .enter().append("div")
+            .attr("class", "legend-item")
+            .html((d,i) => `
+                <div class="legend-color" style="background:${colorScheme[i]}"></div>
+                <div>${d}</div>
+            `);
+    }
+
+    function getTotal(d, quarter) {
+        return Object.values(d.quarters[quarter]).reduce((a,b) => a + b, 0);
+    }
+
+    function showTooltip(event, d, quarter) {
+        tooltip.transition().duration(200).style("opacity", 0.9);
+        tooltip.html(`
+            <strong>${d.fullName}</strong>
+            <div style="margin-top:8px; color:#666">
+                <div>总计：${d.quarters[quarter].agriculture + d.quarters[quarter].forestry + d.quarters[quarter].animal + d.quarters[quarter].fishery}亿元 </div>
+                <div>农业：${d.quarters[quarter].agriculture.toLocaleString()} 亿元</div>
+                <div>林业：${d.quarters[quarter].forestry.toLocaleString()} 亿元</div>
+                <div>牧业：${d.quarters[quarter].animal.toLocaleString()} 亿元</div>
+                <div>渔业：${d.quarters[quarter].fishery.toLocaleString()} 亿元</div>
+            </div>
+        `).style("left", `${event.pageX + 12}px`)
+          .style("top", `${event.pageY - 40}px`);
+    }
+
+    function hideTooltip() {
+        tooltip.transition().duration(300).style("opacity", 0);
+    }
+
+    d3.select("#quarter-select").on("change", function() {
+        d3.select("#pie-container").style("display", "none");
+        updateChart(this.value);
+    });
+
+    updateChart("Q1");
+
+    window.addEventListener('resize', () => {
+        svg.attr("width", document.getElementById('chart').clientWidth);
+        updateChart(document.getElementById('quarter-select').value);
+    });
+}
+    </script>
+</head>
+<body onload="mySvg()">
+     <select id="quarter-select">
+        <option value="Q1">2024年第一季度</option>
+        <option value="Q2">2024年第二季度</option>
+        <option value="Q3">2024年第三季度</option>
+        <option value="Q4">2025年第一季度</option>
+    </select>
+    <div id="chart"></div>
+    <div id="pie-container" style="display: none;"></div>
+</body>
+</html>
